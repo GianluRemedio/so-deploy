@@ -131,20 +131,11 @@ if [[ $TARGET ]]; then
   cd "$TARGET" || fail
 fi
 
-echo -e "\n\n${bold}Checking commons library is installed...${normal}\n\n"
+echo -e "\n\n${bold}Installing commons library...${normal}\n\n"
 
-# Refresh dynamic linker cache
-sudo ldconfig > /dev/null
-
-if sudo ldconfig -p | grep "libcommons.so" > /dev/null; then
-    echo -e "\n\n${bold}Commons library already installed${normal}"
-else
-    echo -e "\n\n${bold}Installing commons library...${normal}\n\n"
-
-    rm -rf "so-commons-library"
-    git clone "https://github.com/sisoputnfrba/so-commons-library.git"
-    make -C "so-commons-library" install
-fi
+rm -rf "so-commons-library"
+git clone --depth=1 --single-branch --recurse-submodules --shallow-submodules "https://github.com/sisoputnfrba/so-commons-library.git"
+make -C "so-commons-library" uninstall install
 
 echo -e "\n\n${bold}Cloning external libraries...${normal}"
 
@@ -152,7 +143,7 @@ for i in "${LIBRARIES[@]}"
 do
   echo -e "\n\n${bold}Building ${i}${normal}\n\n"
   rm -rf "${i#*\/}"
-  git clone "https://github.com/${i}.git"
+  git clone --depth=1 --single-branch "https://github.com/${i}.git"
   make -C "${i#*\/}"
   sudo make -C "${i#*\/}" install
 done
@@ -160,7 +151,7 @@ done
 echo -e "\n\n${bold}Cloning project repo...${normal}\n\n"
 
 rm -rf "$REPONAME"
-git clone "https://github.com/sisoputnfrba/${REPONAME}.git"
+git clone --depth=1 --single-branch "https://github.com/sisoputnfrba/${REPONAME}.git"
 
 echo -e "\n\n${bold}Building dependencies${normal}..."
 
