@@ -134,7 +134,7 @@ fi
 echo -e "\n\n${bold}Installing commons library...${normal}\n\n"
 
 rm -rf "so-commons-library"
-git clone --depth=1 --single-branch --recurse-submodules --shallow-submodules "https://github.com/sisoputnfrba/so-commons-library.git"
+git clone --depth=1 --single-branch --recurse-submodules --shallow-submodules git@github.com:sisoputnfrba/so-commons-library.git
 make -C "so-commons-library" uninstall install
 
 echo -e "\n\n${bold}Cloning external libraries...${normal}"
@@ -143,7 +143,7 @@ for i in "${LIBRARIES[@]}"
 do
   echo -e "\n\n${bold}Building ${i}${normal}\n\n"
   rm -rf "${i#*\/}"
-  git clone --depth=1 --single-branch "https://github.com/${i}.git"
+  git clone --depth=1 --single-branch "https://github.com/sisoputnfrba/${REPONAME}.git"
   make -C "${i#*\/}"
   sudo make -C "${i#*\/}" install
 done
@@ -151,7 +151,21 @@ done
 echo -e "\n\n${bold}Cloning project repo...${normal}\n\n"
 
 rm -rf "$REPONAME"
-git clone --depth=1 --single-branch "https://github.com/sisoputnfrba/${REPONAME}.git"
+git clone --depth=1 --single-branch "git@github.com:sisoputnfrba/${REPONAME}.git"
+
+#Generar archivos CPU1.config a CPU5.config desde cpu.config
+CONFIG_SOURCE="$REPONAME/cpu/cpu.config"
+CONFIG_DEST="$REPONAME/cpu"
+
+echo -e "\n📄 Generando archivos CPU1.config a CPU5.config desde $CONFIG_SOURCE...\n"
+
+for i in {1..5}; do
+  cp "$CONFIG_SOURCE" "$CONFIG_DEST/CPU${i}.config"
+  echo "✅ CPU${i}.config creado"
+done
+
+echo -e "\n🎉 Archivos de configuración por CPU generados correctamente.\n"
+
 
 echo -e "\n\n${bold}Building dependencies${normal}..."
 
@@ -167,17 +181,44 @@ echo -e "\n\n${bold}Building projects...${normal}"
 for i in "${PROJECTS[@]}"
 do
   echo -e "\n\n${bold}Building ${i}${normal}\n\n"
+  if [[ "$i" =~ ^CPU[0-9]+$ ]]; then
+  make -C "$REPONAME/cpu/$STRUCTURE" "$RULE"
+else
   make -C "$REPONAME/$i/$STRUCTURE" "$RULE"
+fi
+
 done
 
 echo -e "\n\n${bold}Replacing variables...${normal}"
 
 for i in "${CONFIGURATIONS[@]}"
 do
-  KEY="${i%=*}"
-  VALUE="${i#*=}"
-  echo -e "\n\nReplacing all ${bold}${KEY:?}${normal} values with ${bold}${VALUE:?}${normal}...\n\n"
-  grep -Rl "^\s*$KEY\s*=" "$REPONAME" | grep -E '\.config|\.cfg' | tee >(xargs -n1 sed -i "s|^\($KEY\s*=\).*|\1$VALUE|")
+  # Si tiene formato CLAVE=VALOR:ARCHIVO
+  if [[ "$i" =~ ^([^=]+)=([^:]+):(.+)$ ]]; then
+    KEY="${BASH_REMATCH[1]}"
+    VALUE="${BASH_REMATCH[2]}"
+    TARGET_FILE="${BASH_REMATCH[3]}"
+    echo -e "\nReemplazando ${bold}$KEY=$VALUE${normal} solo en ${bold}${TARGET_FILE}.config${normal}...\n"
+
+    FILES=$(find "$REPONAME" -type f -name "${TARGET_FILE}.config" -o -name "${TARGET_FILE}.cfg")
+    for file in $FILES; do
+      sed -i "s|^\($KEY\s*=\).*|\1$VALUE|" "$file"
+    done
+  else
+    # Reemplazo global en todos los archivos
+    KEY="${i%=*}"
+    VALUE="${i#*=}"
+    echo -e "\nReemplazando ${bold}$KEY=$VALUE${normal} globalmente...\n"
+
+    FILES=$(find "$REPONAME" -type f \( -name "*.config" -o -name "*.cfg" \))
+for file in $FILES; do
+  if grep -qE "^\s*$KEY\s*=" "$file"; then
+    sed -i "s|^\($KEY\s*=\).*|\1$VALUE|" "$file"
+    echo "$KEY actualizado en $file"
+  fi
 done
+  fi
+done
+
 
 echo -e "\n\n${bold}Deploy done!${normal}\n\n"
