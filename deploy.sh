@@ -235,18 +235,18 @@ do
     VALUE="${i#*=}"
 
     # Soporte también para IP_<MODULO> sin archivo explícito
-    if [[ "$KEY" =~ ^IP_(.+)$ ]]; then
-      KEY="IP"
-      TARGET_FILE="${BASH_REMATCH[1],,}"
-      echo -e "\nReemplazando ${bold}IP=$VALUE${normal} solo en ${bold}${TARGET_FILE}/*.config${normal}...\n"
+       if [[ "$KEY" =~ ^IP_(.+)$ ]]; then
+      SEARCH_KEY="$KEY"
+      echo -e "\nReemplazando ${bold}$SEARCH_KEY=$VALUE${normal} en todos los .config/.cfg...\n"
 
-      FILES=$(find "$REPONAME/$TARGET_FILE" -type f \( -iname "*.config" -o -iname "*.cfg" \))
+      FILES=$(find "$REPONAME" -type f \( -iname "*.config" -o -iname "*.cfg" \))
       for file in $FILES; do
-        if grep -qE "^\s*IP\s*=" "$file"; then
-          sed -i "s|^\(\s*IP\s*=\).*|\1$VALUE|" "$file"
-          echo "IP actualizada en $file"
+        if grep -qE "^\s*$SEARCH_KEY\s*=" "$file"; then
+          sed -i "s|^\s*${SEARCH_KEY}\s*=.*|${SEARCH_KEY}=$VALUE|" "$file"
+          echo "$SEARCH_KEY actualizado en $file"
         fi
       done
+
 
     else
       echo -e "\nReemplazando ${bold}$KEY=$VALUE${normal} globalmente...\n"
