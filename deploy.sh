@@ -153,18 +153,6 @@ echo -e "\n\n${bold}Cloning project repo...${normal}\n\n"
 rm -rf "$REPONAME"
 git clone --depth=1 --single-branch "git@github.com:sisoputnfrba/${REPONAME}.git"
 
-#Generar archivos CPU1.config a CPU5.config desde cpu.config
-CONFIG_SOURCE="$REPONAME/cpu/cpu.config"
-CONFIG_DEST="$REPONAME/cpu"
-
-echo -e "\n📄 Generando archivos CPU1.config a CPU5.config desde $CONFIG_SOURCE...\n"
-
-for i in {1..5}; do
-  cp "$CONFIG_SOURCE" "$CONFIG_DEST/CPU${i}.config"
-  echo "✅ CPU${i}.config creado"
-done
-
-echo -e "\n🎉 Archivos de configuración por CPU generados correctamente.\n"
 
 
 echo -e "\n\n${bold}Building dependencies${normal}..."
@@ -217,6 +205,59 @@ for file in $FILES; do
     echo "$KEY actualizado en $file"
   fi
 done
+  fi
+done
+
+for i in "${CONFIGURATIONS[@]}"
+do
+  # Caso: CLAVE=VALOR:ARCHIVO
+  if [[ "$i" =~ ^([^=]+)=([^:]+):(.+)$ ]]; then
+    KEY="${BASH_REMATCH[1]}"
+    VALUE="${BASH_REMATCH[2]}"
+    TARGET_FILE="${BASH_REMATCH[3]}"
+    
+    # Soporte para claves tipo IP_MODULO (ej: IP_KERNEL)
+    if [[ "$KEY" =~ ^IP_(.+)$ ]]; then
+      KEY="IP"
+      TARGET_FILE="${BASH_REMATCH[1],,}"  # en minúsculas
+    fi
+
+    echo -e "\nReemplazando ${bold}$KEY=$VALUE${normal} solo en ${bold}${TARGET_FILE}.config${normal}...\n"
+
+    FILES=$(find "$REPONAME" -type f -iname "${TARGET_FILE}.config" -o -iname "${TARGET_FILE}.cfg")
+    for file in $FILES; do
+      sed -i "s|^\($KEY\s*=\).*|\1$VALUE|" "$file"
+    done
+
+  else
+    # Reemplazo global en todos los archivos .config/.cfg
+    KEY="${i%=*}"
+    VALUE="${i#*=}"
+
+    # Soporte también para IP_<MODULO> sin archivo explícito
+    if [[ "$KEY" =~ ^IP_(.+)$ ]]; then
+      KEY="IP"
+      TARGET_FILE="${BASH_REMATCH[1],,}"
+      echo -e "\nReemplazando ${bold}IP=$VALUE${normal} solo en ${bold}${TARGET_FILE}/*.config${normal}...\n"
+
+      FILES=$(find "$REPONAME/$TARGET_FILE" -type f \( -iname "*.config" -o -iname "*.cfg" \))
+      for file in $FILES; do
+        if grep -qE "^\s*IP\s*=" "$file"; then
+          sed -i "s|^\(\s*IP\s*=\).*|\1$VALUE|" "$file"
+          echo "IP actualizada en $file"
+        fi
+      done
+
+    else
+      echo -e "\nReemplazando ${bold}$KEY=$VALUE${normal} globalmente...\n"
+      FILES=$(find "$REPONAME" -type f \( -name "*.config" -o -name "*.cfg" \))
+      for file in $FILES; do
+        if grep -qE "^\s*$KEY\s*=" "$file"; then
+          sed -i "s|^\($KEY\s*=\).*|\1$VALUE|" "$file"
+          echo "$KEY actualizado en $file"
+        fi
+      done
+    fi
   fi
 done
 
