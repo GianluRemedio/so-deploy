@@ -143,7 +143,7 @@ for i in "${LIBRARIES[@]}"
 do
   echo -e "\n\n${bold}Building ${i}${normal}\n\n"
   rm -rf "${i#*\/}"
-  git clone --depth=1 --single-branch "https://github.com/sisoputnfrba/${REPONAME}.git"
+  git clone --depth=1 --single-branch "https://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@github.com/sisoputnfrba/${REPONAME}.git"
   make -C "${i#*\/}"
   sudo make -C "${i#*\/}" install
 done
